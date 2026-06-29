@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>sati-duty</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; margin: 0; background: #0f1117; color: #e6e6e6; }
+    header { padding: 16px 24px; background: #161922; border-bottom: 1px solid #262a36; display: flex; align-items: center; gap: 16px; }
+    h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
+    h1 img { height: 28px; width: 28px; border-radius: 6px; }
+    .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #262a36; color: inherit; text-decoration: none; }
+    a.pill:hover { background: #2f3445; }
+    .pill.t { color: #ff8a8a; }
+    .pill.a { color: #ffd479; }
+    main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .oncall { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    .card { background: #161922; border: 1px solid #262a36; border-radius: 10px; padding: 12px 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #262a36; font-size: 14px; vertical-align: top; }
+    th { color: #8a90a2; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .status { font-weight: 600; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+    .triggered { background: #3a1216; color: #ff8a8a; }
+    .acknowledged { background: #3a2f12; color: #ffd479; }
+    .resolved { background: #12331f; color: #6ee7a0; }
+    .sev { font-size: 12px; color: #8a90a2; }
+    a.btn { display: inline-block; font-size: 12px; padding: 4px 10px; border-radius: 6px; text-decoration: none; margin-right: 6px; border: 1px solid #2f3445; color: #e6e6e6; }
+    a.btn:hover { background: #20242f; }
+    .muted { color: #8a90a2; font-size: 12px; }
+    .empty { text-align: center; color: #8a90a2; padding: 48px; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .filters select, .filters input { background: #0f1117; color: #e6e6e6; border: 1px solid #2f3445; border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+    .filters button { background: #20242f; color: #e6e6e6; border: 1px solid #2f3445; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+    .filters button:hover { background: #2a2f3d; }
+    .pager { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 16px; }
+    .pager .disabled { opacity: .35; pointer-events: none; }
+    .stats { margin-bottom: 24px; }
+    .stats h2 { font-size: 12px; color: #8a90a2; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 10px; font-weight: 600; }
+    .day { display: flex; align-items: center; gap: 10px; font-size: 12px; padding: 3px 0; }
+    .day .date { width: 96px; color: #8a90a2; flex: none; }
+    .day .barwrap { flex: 1; display: flex; align-items: center; gap: 8px; }
+    .day .bar { height: 10px; background: #ff8a8a; border-radius: 3px; }
+    .day .n { color: #e6e6e6; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><img src="/static/logo.png" alt="sati-duty logo" /> sati-duty</h1>
+    <span class="pill">{{ open_count }} open</span>
+    <a class="pill t" href="/?status=triggered">{{ triggered_count }} triggered</a>
+    <a class="pill a" href="/?status=acknowledged">{{ acknowledged_count }} acknowledged</a>
+    <a class="pill" href="/">{{ total_all }} total</a>
+    <a class="pill" href="/stats" style="margin-left:auto">📊 Stats</a>
+  </header>
+  <main>
+    <div class="oncall">
+      {% for sid, info in oncall.items() %}
+      <div class="card">
+        <div class="muted">{{ info.schedule }}</div>
+        <div><b>{{ info.user_name }}</b> on-call</div>
+      </div>
+      {% else %}
+      <div class="card muted">No schedules configured</div>
+      {% endfor %}
+    </div>
+
+    <form class="filters" method="get" action="/">
+      <select name="status">
+        <option value="">all statuses</option>
+        {% for s in statuses %}
+        <option value="{{ s }}" {% if s == f_status %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <select name="severity">
+        <option value="">all severities</option>
+        {% for s in severities %}
+        <option value="{{ s }}" {% if s == f_severity %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <input type="search" name="q" value="{{ f_q }}" placeholder="search title…" autocomplete="off" />
+      <select name="page_size">
+        {% for n in [25, 50, 100] %}
+        <option value="{{ n }}" {% if n == page_size %}selected{% endif %}>{{ n }}/page</option>
+        {% endfor %}
+      </select>
+      <a class="btn" href="/">Clear</a>
+    </form>
+
+    {% if incidents %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Title</th><th>Status</th><th>Sev</th><th>Started</th><th>Acknowledged</th><th>Resolved</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inc in incidents %}
+        <tr>
+          <td>{{ inc.id }}</td>
+          <td>
+            <div><b>{{ inc.title }}</b></div>
+            {% if inc.description %}<div class="muted">{{ inc.description }}</div>{% endif %}
+            {% if inc.source_url %}<a class="muted" href="{{ inc.source_url }}">grafana ↗</a>{% endif %}
+          </td>
+          <td>
+            <span class="status {{ inc.status }}">{{ inc.status }}</span>
+            {% if inc.is_muted %}<div class="muted">😴 until {{ inc.muted_local }}</div>{% endif %}
+          </td>
+          <td class="sev">{{ inc.severity }}</td>
+          <td class="muted">{{ inc.created_local }}</td>
+          <td class="muted">
+            {{ inc.acked_local }}
+            {% if inc.acked_by %}<div>by {{ inc.acked_by }}</div>{% endif %}
+          </td>
+          <td class="muted">
+            {{ inc.resolved_local }}
+            {% if inc.resolved_by_label %}<div>{{ inc.resolved_by_label }}</div>{% endif %}
+          </td>
+          <td>
+            {% if inc.status != "resolved" %}
+              {% if inc.status == "triggered" %}
+              <a class="btn" href="/incidents/{{ inc.id }}/ack?who=web">Ack</a>
+              {% if inc.is_muted %}
+              <a class="btn" href="/incidents/{{ inc.id }}/unsnooze?who=web">⏰ Unsnooze</a>
+              {% else %}
+              <a class="btn" href="/incidents/{{ inc.id }}/snooze?minutes=60&who=web">😴 1h</a>
+              <a class="btn" href="/incidents/{{ inc.id }}/snooze?minutes=240&who=web">😴 4h</a>
+              {% endif %}
+              {% endif %}
+              <a class="btn" href="/incidents/{{ inc.id }}/resolve?who=web">Resolve</a>
+            {% else %}
+              <span class="muted">resolved</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="pager">
+      {% if page > 1 %}
+      <a class="btn" href="/?{{ base_q }}&page={{ page - 1 }}">← Prev</a>
+      {% else %}
+      <span class="btn disabled">← Prev</span>
+      {% endif %}
+      <span class="muted">Page {{ page }} of {{ pages }} · {{ total }} matched</span>
+      {% if page < pages %}
+      <a class="btn" href="/?{{ base_q }}&page={{ page + 1 }}">Next →</a>
+      {% else %}
+      <span class="btn disabled">Next →</span>
+      {% endif %}
+    </div>
+    {% elif total_all == 0 %}
+    <div class="empty">No incidents yet. Point a Grafana webhook at <code>/webhook/grafana</code>.</div>
+    {% else %}
+    <div class="empty">No incidents match these filters. <a href="/">Clear</a></div>
+    {% endif %}
+  </main>
+  <script>
+    (function () {
+      var form = document.querySelector('form.filters');
+      if (!form) return;
+      var q = form.querySelector('input[name="q"]');
+      // Dropdowns apply immediately on change.
+      form.querySelectorAll('select').forEach(function (el) {
+        el.addEventListener('change', function () { form.submit(); });
+      });
+      // Search box applies as you type (debounced).
+      var timer;
+      if (q) {
+        q.addEventListener('input', function () {
+          clearTimeout(timer);
+          timer = setTimeout(function () { form.submit(); }, 400);
+        });
+        // After a search-triggered reload, restore focus + caret to the end.
+        if (q.value) { q.focus(); var v = q.value; q.value = ''; q.value = v; }
+      }
+      // Live refresh every 15s — but never while typing in the search box,
+      // and not while a debounced submit is pending.
+      setInterval(function () {
+        if (document.activeElement === q || timer) return;
+        window.location.reload();
+      }, 15000);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+# pgduty org configuration (config-as-code).
+# Users, on-call schedules, escalation policies and alert routing live here.
+# Channel secrets (bot tokens, webhook URLs) live in .env, not here.
+#
+# This file is re-read on startup. Incidents are dynamic and stored in the DB.
+
+users:
+  - id: sergey
+    name: Sergey
+    # Telegram chat id for DM paging. Start a chat with your bot and call
+    # GET /telegram/chats (or check logs) to discover your numeric chat id.
+    telegram_chat_id: "1914575937"
+    email: sergey@sati.team
+
+schedules:
+  - id: primary
+    name: Primary on-call
+    # daily | weekly rotation through `users`, anchored at `start` (UTC ISO).
+    rotation: weekly
+    start: "2026-06-15T10:00:00"
+    users:
+      - sergey
+
+escalation_policies:
+  - id: default
+    name: Default policy
+    # How many times to repeat the whole ladder after the last step (0 = stop).
+    repeat: 1
+    steps:
+      # Page whoever is on-call on the primary schedule. Wait 5 min for an ack.
+      - delay_minutes: 5
+        targets:
+          - { type: schedule, id: primary }
+      # Still unacked? Escalate directly to Sergey, wait 10 min.
+      - delay_minutes: 10
+        targets:
+          - { type: user, id: sergey }
+
+routing:
+  # Policy used when no rule matches.
+  default_policy: default
+  # First matching rule wins. `match` is an AND over label key/values.
+  rules:
+    - match: { severity: critical }
+      policy: default

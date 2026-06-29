@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- pgduty is typically self-hosted over plain HTTP on a LAN / localhost,
+     so cleartext traffic is permitted. Tighten this if you front it with TLS. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

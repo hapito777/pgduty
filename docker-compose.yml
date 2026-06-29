@@ -1,0 +1,49 @@
+services:
+  pgduty:
+    build: .
+    image: pgduty:latest
+    container_name: pgduty
+    restart: unless-stopped
+    # Host 8099 -> container 8080 (host 8080 is already in use on this machine).
+    ports:
+      - "8099:8080"
+    env_file:
+      - .env
+    environment:
+      # Override the defaults baked into the image so they point at mounts.
+      PGDUTY_CONFIG: /app/config.yaml
+      PGDUTY_DATABASE_URL: sqlite:////app/data/pgduty.db
+      # Make sure ack/resolve links in Google Chat point at the host port.
+      PGDUTY_BASE_URL: ${PGDUTY_BASE_URL:-http://localhost:8099}
+    volumes:
+      # Edit config.yaml on the host; POST /reload picks up changes.
+      - ./config.yaml:/app/config.yaml:ro
+      # Persist the SQLite incident store across restarts.
+      - pgduty-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pgduty-data:
+
+# --- Optional: use Postgres instead of SQLite ------------------------------
+# Uncomment the `db` service below, add `depends_on: [db]` to pgduty, and set
+# in .env:  PGDUTY_DATABASE_URL=postgresql+psycopg://pgduty:pgduty@db:5432/pgduty
+# (also add `psycopg[binary]` to requirements.txt and rebuild).
+#
+#  db:
+#    image: postgres:16-alpine
+#    restart: unless-stopped
+#    environment:
+#      POSTGRES_USER: pgduty
+#      POSTGRES_PASSWORD: pgduty
+#      POSTGRES_DB: pgduty
+#    volumes:
+#      - pgduty-pg:/var/lib/postgresql/data
+#
+# volumes:
+#   pgduty-pg:

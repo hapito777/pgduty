@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>sati-duty · stats</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; margin: 0; background: #0f1117; color: #e6e6e6; }
+    header { padding: 16px 24px; background: #161922; border-bottom: 1px solid #262a36; display: flex; align-items: center; gap: 16px; }
+    h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
+    h1 img { height: 28px; width: 28px; border-radius: 6px; }
+    .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #262a36; color: inherit; text-decoration: none; }
+    a.pill:hover { background: #2f3445; }
+    main { padding: 24px; max-width: 900px; margin: 0 auto; }
+    .controls { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+    .controls select { background: #0f1117; color: #e6e6e6; border: 1px solid #2f3445; border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+    .summary { color: #8a90a2; font-size: 13px; margin-bottom: 20px; }
+    .summary b { color: #e6e6e6; }
+    .day { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #1b1f2a; }
+    .day .date { width: 110px; color: #8a90a2; flex: none; }
+    .day .barwrap { flex: 1; display: flex; align-items: center; gap: 8px; }
+    .day .bar { height: 12px; background: #ff8a8a; border-radius: 3px; }
+    .day .n { color: #e6e6e6; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><img src="/static/logo.png" alt="sati-duty logo" /> sati-duty</h1>
+    <a class="pill" href="/">← Incidents</a>
+  </header>
+  <main>
+    <div class="controls">
+      <form method="get" action="/stats">
+        <label class="summary" for="days">Time range:</label>
+        <select id="days" name="days" onchange="this.form.submit()">
+          {% for r in ranges %}
+          <option value="{{ r }}" {% if r == days %}selected{% endif %}>last {{ r }} days</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+
+    <div class="summary">
+      <b>{{ total_new }}</b> new · <b>{{ total_resolved }}</b> resolved over the last {{ days }} days
+    </div>
+
+    {% for d in daily %}
+    <div class="day">
+      <span class="date">{{ d.label }}</span>
+      <span class="barwrap">
+        <span class="bar" style="width: {{ d.pct }}%"></span>
+        <span class="n">{{ d.created }} new{% if d.resolved %} · {{ d.resolved }} resolved{% endif %}</span>
+      </span>
+    </div>
+    {% endfor %}
+  </main>
+</body>
+</html>

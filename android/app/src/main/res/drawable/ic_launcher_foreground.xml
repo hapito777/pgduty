@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Centered alarm-bell glyph in the dashboard's "triggered" red. -->
+    <group android:scaleX="2.2" android:scaleY="2.2" android:pivotX="54" android:pivotY="54"
+        android:translateX="0" android:translateY="2">
+        <path
+            android:fillColor="#FF8A8A"
+            android:pathData="M54,30c-6.6,0 -12,5.4 -12,12v10l-4,4v2h32v-2l-4,-4V42C66,35.4 60.6,30 54,30zM54,72c2.2,0 4,-1.8 4,-4h-8C50,70.2 51.8,72 54,72z" />
+    </group>
+</vector>
